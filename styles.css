@@ -33,7 +33,7 @@ input[type=checkbox]{width:auto}.chk{display:inline-flex;gap:6px;align-items:cen
 .sec{margin-top:64px}.sec>h2{margin-bottom:18px}
 .pol h3{margin:22px 0 6px}.pol p,.pol li{color:var(--mu)}
 details{border-bottom:1px solid var(--bd);padding:14px 0}summary{cursor:pointer;font-weight:600}details p{color:var(--mu);margin-top:8px}
-footer{text-align:center;color:var(--mu);font-size:13px;padding:30px}footer a{margin:0 8px}
+
 .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0));transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:13px;z-index:20;max-width:90vw}
 @media(max-width:600px){main{padding:20px 16px 40px}.hero{padding-top:32px}.ctas .btn{width:100%}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
@@ -47,3 +47,7 @@ nav .icon-btn{position:relative;display:inline-grid;place-items:center;width:38p
 .num{display:inline-grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--ac2);color:var(--ac);font-weight:700;font-size:13px}.step{display:grid;grid-template-columns:34px 1fr;gap:12px;padding:12px 0}.cols{display:grid;grid-template-columns:1fr 1fr;gap:32px}
 .eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ac);margin-bottom:8px}
 @media(max-width:700px){.side,.cols{grid-template-columns:1fr}.menu{right:-8px}}
+.ft{border-top:1px solid var(--bd);background:var(--card);margin-top:40px;padding:48px 20px 0}.ft-in{max-width:1060px;margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:32px}
+.ft h4{margin:0 0 10px;font:600 12px var(--sans);text-transform:uppercase;letter-spacing:.06em;color:var(--mu)}.ft a{display:block;padding:4px 0;color:var(--tx);font-weight:400}.ft a:hover{color:var(--ac)}.ft .logo{display:inline-block;margin:0 0 8px;font-weight:600}
+.ft-brand p{color:var(--mu);max-width:280px;font-size:14px}.ft-bar{max-width:1060px;margin:36px auto 0;padding:18px 0;border-top:1px solid var(--bd);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--mu)}
+@media(max-width:700px){.ft-in{grid-template-columns:1fr 1fr}.ft-brand{grid-column:1/-1}}

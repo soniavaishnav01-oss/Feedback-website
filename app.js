@@ -1,7 +1,7 @@
 'use strict';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const inr = n => '₹' + (Number(n) || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+const inr = n => '₹' + (Number(n) || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 }); 
 const date = s => s ? new Date(s).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
 const HOME = { f: 'dash', c: 'tasks', a: 'admin' }, ROLE = { dash: 'f', create: 'f', campaign: 'f', tasks: 'c', task: 'c', profile: 'fc', pay: 'fc', prefs: 'fc', security: 'fc', admin: 'a', wallet: 'fc', notes: 'fca' };
 const S = { user: null, role: 'c', tab: 'new', at: 'q', cache: {}, unread: 0, qs: sq('website'), cf: { type: 'website', launch: 'yes', age: [] }, pricing: {} };

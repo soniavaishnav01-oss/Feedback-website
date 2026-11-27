@@ -1,9 +1,9 @@
 'use strict';
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const inr = n => '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+const inr = n => '₹' + (Number(n) || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
 const date = s => s ? new Date(s).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
-const HOME = { f: 'dash', c: 'tasks', a: 'admin' }, ROLE = { dash: 'f', create: 'f', campaign: 'f', tasks: 'c', task: 'c', profile: 'c', admin: 'a', wallet: 'fc', notes: 'fca' };
+const HOME = { f: 'dash', c: 'tasks', a: 'admin' }, ROLE = { dash: 'f', create: 'f', campaign: 'f', tasks: 'c', task: 'c', profile: 'fc', admin: 'a', wallet: 'fc', notes: 'fca' };
 const S = { user: null, role: 'c', tab: 'new', at: 'q', cache: {}, unread: 0, qs: sq('website'), cf: { type: 'website', launch: 'yes', age: [] }, pricing: {} };
 const toast = m => { const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; t.setAttribute('role', 'status'); document.body.append(t); setTimeout(() => t.remove(), 3500); };
 const showErr = (m, id = 'err') => { const e = $('#' + id); if (e) { e.textContent = m; e.hidden = !m; } };
@@ -22,28 +22,26 @@ async function draw() {
   if (need && !S.user) { S.next = location.hash.slice(1); return go('login'); }
   if (need && !need.includes(S.user.role)) return go(HOME[S.user.role]);
   if (['login', 'signup'].includes(v) && S.user) return go(HOME[S.user.role]);
-  if (S.user) { const { count } = await sb.from('notifications').select('id', { count: 'exact', head: true }).eq('read', false); S.unread = count || 0; }
+  if (S.user) { const [n, w] = await Promise.all([sb.from('notifications').select('id', { count: 'exact', head: true }).eq('read', false), rpc('wallet').catch(() => null)]); S.unread = n.count || 0; S.bal = w?.available || 0; }
   nav(v); $('#app').innerHTML = '<p class="mu">Loading…</p>';
   try { $('#app').innerHTML = await V[v](id); } catch (e) { $('#app').innerHTML = `<div class="err">${esc(e.message)}</div>`; }
 }
+const BELL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>';
 function nav(v) {
-  const r = S.user?.role, L = { f: [['dash', 'Dashboard'], ['create', 'New campaign'], ['wallet', 'Wallet']], c: [['tasks', 'Tasks'], ['wallet', 'Wallet'], ['profile', 'Profile']], a: [['admin', 'Admin']] }[r] || [];
-  $('#nav').innerHTML = `<a class="logo" data-go="${r ? HOME[r] : 'home'}">Loop<b>back</b></a>${L.map(([k, t]) => `<a class="${v === k ? 'on' : ''}" data-go="${k}">${t}</a>`).join('')}${S.user ? `<a class="${v === 'notes' ? 'on' : ''}" data-go="notes">Notifications${S.unread ? ` (${S.unread})` : ''}</a><a data-act="logout">Log out</a>` : '<a data-go="login">Log in</a><a class="btn sm" data-go="signup">Sign up</a>'}`;
+  const r = S.user?.role, L = { f: [['dash', 'Dashboard'], ['create', 'New campaign']], c: [['tasks', 'Tasks']], a: [['admin', 'Admin']] }[r] || [];
+  const items = r === 'a' ? [] : [['profile', 'Profile'], ['wallet', r === 'f' ? 'Wallet and add funds' : 'Earnings and withdraw']];
+  $('#nav').innerHTML = `<a class="logo" data-go="${r ? HOME[r] : 'home'}">Loop<b>back</b></a>${L.map(([k, t]) => `<a class="${v === k ? 'on' : ''}" data-go="${k}">${t}</a>`).join('')}${S.user ? `<a class="icon-btn" data-go="notes" aria-label="Notifications">${BELL}${S.unread ? `<i class="badge">${S.unread > 9 ? '9+' : S.unread}</i>` : ''}</a><div class="acct"><button class="avatar" data-act="menu" aria-label="Account menu">${esc((S.user.name || 'U')[0].toUpperCase())}</button><div class="menu" id="menu" hidden><div class="mhead"><b>${esc(S.user.name)}</b><div class="ex">${{ f: 'Founder', c: 'Contributor', a: 'Admin' }[r]}</div>${r !== 'a' ? `<div class="bal">Balance <b>${inr(S.bal)}</b></div>` : ''}</div>${items.map(([k, t]) => `<a data-go="${k}">${t}</a>`).join('')}<a data-act="logout">Log out</a></div></div>` : '<a data-go="login">Log in</a><a class="btn sm" data-go="signup">Sign up</a>'}`;
 }
 
 /* views */
 const grid = (a, c = 'g3') => `<div class="grid ${c}">${a.join('')}</div>`;
 const V = {
-  home: () => `<section class="hero"><h1>Build better with a second perspective.</h1><p class="lead">Connect with real people, collect honest feedback and understand how your products are experienced before making your next big decision.</p><div class="ctas"><button class="btn" data-go="signup" data-role="f">I’m a Founder</button><button class="btn g" data-go="signup" data-role="c">I’m a Contributor</button></div></section>
-<div class="facts">${[['Reviewed by people', 'Feedback is checked before a founder sees it.'], ['Fair rewards', 'Contributors are paid for approved work.'], ['Clear decisions', 'Every rejection comes with a reason.'], ['Privacy aware', 'Warnings and guidance before you share.']].map(x => `<div><b>${x[0]}</b>${x[1]}</div>`).join('')}</div>
-<div class="sec"><h2>What can you get feedback on?</h2>${grid(Object.values(CATS).map(c => `<div class="card stack"><h3>${c.n}</h3><p class="mu">${c.d}</p></div>`))}</div>
-<div class="sec"><h2>How it works</h2>${grid([['For founders', 'Choose a category, describe what you need, pick suggested questions or write your own, fund the campaign and read approved feedback.'], ['For contributors', 'Browse tasks that match your profile, see the reward up front, share honest feedback and earn once it is approved.'], ['Share thoughtfully', 'Campaigns are public in this first version, so Loopback guides founders to share only what contributors need to test.']].map(x => `<div class="card stack"><h3>${x[0]}</h3><p class="mu">${x[1]}</p></div>`))}</div>
-<div class="sec"><h2>Questions, answered</h2>${[['When do contributors get paid?', 'Rewards are credited when feedback is approved and can be withdrawn 7 days later.'], ['Can founders dispute feedback?', 'Yes, within 7 days of it becoming available. Our team investigates before any action.'], ['Is my idea safe?', 'Public campaigns cannot guarantee secrecy. Avoid sharing confidential plans or trade secrets.']].map(x => `<details><summary>${x[0]}</summary><p>${x[1]}</p></details>`).join('')}</div>`,
+  home: () => homePage(),
 
   privacy: () => `<div class="pol" style="max-width:720px"><h2>Privacy policy</h2><p>Last updated: November 2026.</p><h3>What we collect</h3><p>Account details, profile information you choose to share, the feedback you submit and basic usage data.</p><h3>What founders see</h3><p>Approved feedback and a contributor’s first name only.</p><h3>What we never do</h3><ul><li>Sell personal data.</li><li>Share rejected or unreviewed submissions with founders.</li></ul><h3>Public campaigns</h3><p>Campaigns are visible to eligible contributors. Public access cannot guarantee that an idea will not be copied.</p><h3>Your rights</h3><p>You can access, correct or delete your data by contacting support.</p></div>`,
   nf: () => `<div class="card auth stack"><h2>Page not found</h2><button class="btn" data-go="home">Back to home</button></div>`,
   login: () => `<form class="card auth stack" data-form="login"><h2>Log in</h2>${errBox}${S.next ? '<div class="note">Please log in to continue.</div>' : ''}${inp('e', 'Email', 'email', 'autocomplete="email" required')}${inp('p', 'Password', 'password', 'autocomplete="current-password" required')}<button class="btn" style="width:100%">Log in</button><p class="ex">New here? <a data-go="signup">Create an account</a></p></form>`,
-  signup: () => `<form class="card auth stack" data-form="signup"><h2>Create your account</h2>${errBox}<div><label>I’m a</label><div class="seg"><button type="button" data-role="c" class="${S.role !== 'f' ? 'on' : ''}">Contributor</button><button type="button" data-role="f" class="${S.role === 'f' ? 'on' : ''}">Founder</button></div></div>${inp('n', 'Full name', 'text', 'autocomplete="name" required')}${inp('e', 'Email', 'email', 'autocomplete="email" required')}${inp('p', 'Password (8+ characters)', 'password', 'autocomplete="new-password" required minlength="8"')}${inp('p2', 'Confirm password', 'password', 'required')}<label class="chk"><input id="ag" type="checkbox" required> I agree to the <a data-go="privacy">privacy policy</a></label><button class="btn" style="width:100%">Create account</button><p class="ex">Already registered? <a data-go="login">Log in</a></p></form>`,
+  signup: () => `<form class="card auth stack" data-form="signup"><h2>Create your account</h2>${errBox}<div><label>I’m a</label><div class="seg"><button type="button" data-role="c" class="${S.role !== 'f' ? 'on' : ''}">Contributor</button><button type="button" data-role="f" class="${S.role === 'f' ? 'on' : ''}">Founder</button></div><p class="ex" id="rd">${RD[S.role === 'f' ? 'f' : 'c']}</p></div>${inp('n', 'Full name', 'text', 'autocomplete="name" required')}${inp('e', 'Email', 'email', 'autocomplete="email" required')}${inp('p', 'Password (8+ characters)', 'password', 'autocomplete="new-password" required minlength="8"')}${inp('p2', 'Confirm password', 'password', 'required')}<label class="chk"><input id="ag" type="checkbox" required> I agree to the <a data-go="privacy">privacy policy</a></label><button class="btn" style="width:100%">Create account</button><p class="ex">Already registered? <a data-go="login">Log in</a></p></form>`,
 
   profile: () => { const p = S.user.profile || {}; return `<h2>Your profile</h2><p class="mu">Used only to match you with campaigns.</p><form class="card stack" style="max-width:560px;margin-top:16px" data-form="profile">${errBox}<div><label for="age">Age group *</label><select id="age"><option value="">Select</option>${AGES.map(a => `<option ${p.age === a ? 'selected' : ''}>${a}</option>`).join('')}</select></div>${inp('loc', 'Location *', 'text', `value="${esc(p.loc)}" placeholder="City, country"`)}${inp('prof', 'Professional experience', 'text', `value="${esc(p.prof)}"`)}${inp('int', 'Interests and devices', 'text', `value="${esc(p.int)}"`)}<button class="btn">Save profile</button></form>`; },
 
@@ -71,7 +69,7 @@ ${S.tab === 'done' ? grid(mine.map(s => `<div class="card stack"><div class="row
   wallet: async () => {
     const w = await rpc('wallet'), f = S.user.role === 'f', t = (b, l) => `<div class="card stat"><b>${inr(b)}</b><span>${l}</span></div>`;
     return `<h2>Wallet</h2><div class="note">Payments are simulated in this version. No real money moves until a payment gateway is connected and verified on the backend.</div>${grid(f ? [t(w.available, 'Available'), t(w.reserved, 'Reserved for campaigns')] : [t(w.pending, 'Pending review'), t(w.hold, 'Credited, on 7-day hold'), t(w.available, 'Available to withdraw')])}
-<div class="grid g2" style="margin:16px 0;align-items:start">${f ? `<form class="card stack" data-form="topup"><h3>Add money (test)</h3>${errBox}${inp('amt', 'Amount (₹100 to ₹10,000)', 'number', 'min="100" max="10000" required')}<button class="btn">Add money</button></form>` : ''}<form class="card stack" data-form="withdraw"><h3>Withdraw</h3><div id="err2" class="err" hidden></div>${inp('wamt', 'Amount', 'number', 'min="1" step="any" required')}<button class="btn g">Request withdrawal</button><p class="ex">Seven days is the minimum hold. Transfers are not instant.</p></form></div>
+<div class="grid g2" style="margin:16px 0;align-items:start">${f ? `<form class="card stack" data-form="topup"><h3>Add money (test)</h3>${errBox}${inp('amt', 'Amount (₹100 to ₹10,000)', 'number', 'min="100" max="10000" required')}<button class="btn">Add money</button></form>` : ''}<form class="card stack" data-form="withdraw"><h3>Withdraw</h3><div id="err2" class="err" hidden></div>${inp('wamt', 'Amount', 'number', 'min="1" step="any" required')}<button class="btn g">Request withdrawal</button>${f ? '<p class="ex">Unused funds can be withdrawn any time. Money reserved for live campaigns is released when a campaign ends.</p>' : '<p class="ex">Rewards unlock 7 days after approval. That is a minimum, not a promise of an instant transfer.</p>'}</form></div>
 <div class="card tw"><h3>Transactions</h3><table><tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th></tr>${w.tx.map(x => `<tr><td>${date(x.created)}</td><td>${esc(x.note)}</td><td>${x.amount > 0 ? '+' : ''}${inr(x.amount)}</td><td>${x.available_at && new Date(x.available_at) > new Date() ? 'On hold until ' + date(x.available_at) : '—'}</td></tr>`).join('') || '<tr><td colspan="4">No transactions yet.</td></tr>'}</table></div>`;
   },
 
@@ -116,10 +114,15 @@ ${f.complaint ? `<p>Complaint: ${pill(f.complaint)}</p>` : f.can ? `<details><su
   }
 };
 
+const shell = (a, body) => `<div class="side"><aside class="card stack"><b class="ex">ACCOUNT</b>${[['profile', 'Profile'], ['wallet', S.user.role === 'f' ? 'Wallet and payments' : 'Earnings and wallet']].map(([k, t]) => `<a class="${a === k ? 'on' : ''}" data-go="${k}">${t}</a>`).join('')}</aside><div>${body}</div></div>`;
+const P0 = V.profile, W0 = V.wallet;
+V.profile = () => shell('profile', S.user.role === 'f' ? `<h2>Your account</h2><p class="mu">Your details as shown to our team.</p><div class="card stack" style="margin:16px 0"><div><div class="ex">Name</div><p>${esc(S.user.name)}</p></div><div><div class="ex">Email</div><p>${esc(S.user.email)}</p></div><div><div class="ex">Account type</div><p>Founder</p></div></div><form class="card stack" data-form="password"><h3>Change password</h3>${errBox}${inp('np', 'New password (8+ characters)', 'password', 'minlength="8" autocomplete="new-password" required')}${inp('np2', 'Confirm new password', 'password', 'required')}<button class="btn">Update password</button></form>` : P0());
+V.wallet = async () => shell('wallet', await W0());
 /* form handlers */
 const SENSITIVE = /(password|passwd|api[_-]?key|secret|access[_-]?token)\s*[:=]|[?&](token|key|apikey|access_token)=|:\/\/[^\/\s]*:[^@\s]*@/i;
 async function enter() { S.user = await me(); const n = S.next; S.next = ''; go(n || HOME[S.user.role]); }
 const F = {
+  async password() { if ($('#np').value !== $('#np2').value) throw new Error('Passwords do not match.'); const { error } = await sb.auth.updateUser({ password: $('#np').value }); if (error) throw new Error(error.message); toast('Password updated.'); draw(); },
   async login() { const { error } = await sb.auth.signInWithPassword({ email: $('#e').value.trim(), password: $('#p').value }); if (error) throw new Error(error.message === 'Invalid login credentials' ? 'Incorrect email or password.' : error.message); await enter(); },
   async signup() {
     if ($('#p').value !== $('#p2').value) throw new Error('Passwords do not match.');
@@ -155,14 +158,16 @@ document.addEventListener('input', e => {
 });
 document.addEventListener('change', e => { const d = e.target.dataset; if (d.k === 'launch' || d.qf === 't') draw(); });
 document.addEventListener('click', async e => {
+  if (!e.target.closest('.acct')) { const m = $('#menu'); if (m) m.hidden = true; }
   const t = e.target.closest('[data-go],[data-act],[data-tab],[data-at],[data-role]'); if (!t) return;
   const d = t.dataset;
-  if (d.role) { S.role = d.role; if (t.type === 'button') return $$('.seg button').forEach(b => b.classList.toggle('on', b === t)); }
+  if (d.role) { S.role = d.role; if (t.type === 'button') { const r = $('#rd'); if (r) r.textContent = RD[d.role]; return $$('.seg button').forEach(b => b.classList.toggle('on', b === t)); } }
   if (d.tab) { S.tab = d.tab; return draw(); }
   if (d.at) { S.at = d.at; return draw(); }
   if (d.go) return go(d.go, d.id);
   try {
-    if (d.act === 'logout') { await sb.auth.signOut(); S.user = null; S.cache = {}; go('home'); }
+    if (d.act === 'menu') { const m = $('#menu'); m.hidden = !m.hidden; }
+    else if (d.act === 'logout') { await sb.auth.signOut(); S.user = null; S.cache = {}; go('home'); }
     else if (d.act === 'ctype') { S.cf.type = d.id; S.qs = sq(d.id); draw(); }
     else if (d.act === 'reset') { S.qs = sq(S.cf.type); draw(); }
     else if (d.act === 'aq') { S.qs.push({ q: '', h: '', t: 'long', r: 1, o: [] }); draw(); }

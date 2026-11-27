@@ -59,7 +59,7 @@ ${S.tab === 'done' ? grid(mine.map(s => `<div class="card stack"><div class="row
   },
 
   task: async id => {
-    const c = (S.cache.tasks || await rpc('list_campaigns')).find(x => x.id == id); if (!c) return V.nf();
+    let L = S.cache.tasks || await rpc('list_campaigns'), c = L.find(x => x.id == id); if (!c) { L = await rpc('list_campaigns'); S.cache.tasks = L; c = L.find(x => x.id == id); } if (!c) return V.nf();
     const ctl = q => q.t === 'long' ? '<textarea class="ans"></textarea>' : q.t === 'text' ? '<input class="ans">' : q.t === 'rating' ? `<select class="ans"><option value="">Select 1 (poor) to 5 (great)</option>${[1, 2, 3, 4, 5].map(n => `<option>${n}</option>`).join('')}</select>` : q.t === 'choice' ? `<select class="ans"><option value="">Select</option>${(q.o || []).map(o => `<option>${esc(o)}</option>`).join('')}</select>` : '<select class="ans"><option value="">Select</option><option>Yes</option><option>No</option><option>Not sure</option></select>';
     const det = CATS[c.type].f.map(f => f.split('|')).filter(f => c.details[f[0]]).map(f => `<div><div class="ex">${f[1]}</div>${f[2] === 'u' && /^https?:\/\//.test(c.details[f[0]]) ? `<a href="${esc(c.details[f[0]])}" target="_blank" rel="noopener noreferrer">${esc(c.details[f[0]])}</a>` : `<p>${esc(c.details[f[0]])}</p>`}</div>`).join('');
     return `<a data-go="tasks">← Back to tasks</a><div class="grid g2" style="margin-top:14px;align-items:start"><div class="card stack"><div><span class="pill">${CATS[c.type].n}</span> <span class="pill ok">${inr(c.reward)} reward</span></div><h2>${esc(c.title)}</h2><p>${esc(c.descr)}</p>${det}<p class="ex">Closes ${esc(c.deadline)}. Reward is paid only after approval and can be withdrawn 7 days later.</p></div>
@@ -92,7 +92,7 @@ ${S.tab === 'done' ? grid(mine.map(s => `<div class="card stack"><div class="row
 ${c.launch !== 'yes' ? `<div class="note"><b>Your product is not public yet. Please protect your idea before sharing it.</b><br>Your campaign will be visible to eligible contributors. Avoid sharing an unreleased domain or brand, use a staging URL, never share your full business plan, source code, passwords, API keys or customer data, use dummy accounts, and share only what testers need. Public campaigns are not suitable for trade secrets. Loopback cannot guarantee that an idea cannot be copied.<label class="chk" style="margin-top:8px"><input type="checkbox" data-k="ack" ${c.ack ? 'checked' : ''}> I understand and accept this</label></div>` : ''}</div>
 <div class="card stack"><h3>3. Questions</h3><p class="mu">Suggested questions are loaded for this category. Edit, remove or add your own. Pair website and app questions with a clear activity in the instructions.</p>${S.qs.map((x, i) => `<div class="card stack" style="margin-bottom:6px"><input data-qi="${i}" data-qf="q" placeholder="Question ${i + 1}" value="${esc(x.q)}"><input data-qi="${i}" data-qf="h" placeholder="Hint (optional)" value="${esc(x.h)}"><div class="row"><select data-qi="${i}" data-qf="t">${Object.entries(QT).map(([k, l]) => `<option value="${k}" ${x.t === k ? 'selected' : ''}>${l}</option>`).join('')}</select><label class="chk"><input type="checkbox" data-qi="${i}" data-qf="r" ${x.r ? 'checked' : ''}> Required</label><button type="button" class="btn g sm" data-act="rq" data-id="${i}">Remove</button></div>${x.t === 'choice' ? `<input data-qi="${i}" data-qf="o" placeholder="Options, comma-separated" value="${esc((x.o || []).join(', '))}">` : ''}</div>`).join('')}<div class="row" style="justify-content:flex-start"><button type="button" class="btn g sm" data-act="aq">+ Add a question</button><button type="button" class="btn g sm" data-act="reset">Reset to suggested</button></div></div>
 <div class="card stack"><h3>4. Audience and budget</h3><div class="grid g2"><div><label>Responses required *</label><input data-k="need" type="number" min="1" value="${v('need') || 10}"></div><div><label>Deadline *</label><input data-k="deadline" type="date" min="${new Date(Date.now() + 864e5).toISOString().slice(0, 10)}" value="${v('deadline')}"></div></div><div><label>Age group (empty = everyone)</label>${AGES.map(a => `<label class="chk"><input type="checkbox" data-age="${a}" ${c.age.includes(a) ? 'checked' : ''}> ${a}</label>`).join('')}</div><div><label>Location (comma-separated, optional)</label><input data-k="loc" value="${v('loc')}"></div>
-<div class="note">Price per approved response: <b>${inr(P.price)}</b> · Total budget: <b id="tot">${inr(P.price * (+c.need || 10))}</b>. Reserved from your wallet; unused funds are returned when the campaign ends.</div></div>
+<div class="note">Price per approved response: <b>${inr(P.price)}</b> · Total budget: <b id="tot">${inr(P.price * (+c.need || 10))}</b>. Reserved from your wallet; unused funds are returned when the campaign ends.</div>${fundPanel()}</div>
 <button class="btn">Launch campaign</button></form>`;
   },
 
@@ -131,6 +131,8 @@ V.security = () => shell('security', `<h2>Security and privacy</h2><div class="c
 <form class="card stack" data-form="password"><h3>Change password</h3>${errBox}${inp('np', 'New password (8+ characters)', 'password', 'minlength="8" autocomplete="new-password" required')}${inp('np2', 'Confirm new password', 'password', 'required')}<button class="btn">Update password</button></form>
 <div class="card stack" style="margin-top:16px"><h3>Sessions</h3><p class="mu">Signed in somewhere you don’t recognise? Log out everywhere else.</p><div><button class="btn g sm" data-act="others">Log out of other devices</button></div></div>
 <div class="card stack" style="margin-top:16px"><h3>Delete my account</h3><p class="mu">Request deletion of your account and data. Our team reviews requests, and pending rewards or reserved campaign funds are settled first.</p>${S.user.delReq ? `<div class="note">Deletion requested on ${date(S.user.delReq)}.</div>` : '<div><button class="btn r sm" data-act="del">Request deletion</button></div>'}</div>`);
+const need$ = () => ((S.pricing[S.cf.type] || {}).price || 0) * (+S.cf.need || 10), short$ = () => Math.max(0, need$() - (S.bal || 0)), fa$ = () => Math.min(10000, Math.max(100, Math.ceil(short$())));
+const fundPanel = () => `<div class="note" id="fund" ${short$() > 0 ? '' : 'hidden'}><b>Your wallet has ${inr(S.bal)}. You need <span id="shn">${inr(short$())}</span> more to launch.</b><div class="row" style="margin-top:8px;justify-content:flex-start"><input id="fa" type="number" min="100" max="10000" value="${fa$()}" style="width:140px" aria-label="Amount to add"><button type="button" class="btn sm" data-act="addfunds">Add money</button></div><p class="ex">Test mode: no real money is charged yet.</p></div>`;
 /* form handlers */
 const SENSITIVE = /(password|passwd|api[_-]?key|secret|access[_-]?token)\s*[:=]|[?&](token|key|apikey|access_token)=|:\/\/[^\/\s]*:[^@\s]*@/i;
 async function enter() { S.user = await me(); const n = S.next; S.next = ''; go(n || HOME[S.user.role]); }
@@ -171,7 +173,7 @@ document.addEventListener('input', e => {
   if (d.k) S.cf[d.k] = t.type === 'checkbox' ? t.checked : t.value;
   else if (d.age) S.cf.age = t.checked ? [...new Set([...S.cf.age, d.age])] : S.cf.age.filter(a => a !== d.age);
   else if (d.qi != null) S.qs[+d.qi][d.qf] = d.qf === 'r' ? (t.checked ? 1 : 0) : d.qf === 'o' ? t.value.split(',').map(x => x.trim()).filter(Boolean) : t.value;
-  if (d.k === 'need' && $('#tot')) $('#tot').textContent = inr(((S.pricing[S.cf.type] || {}).price || 0) * (+t.value || 0));
+  if (d.k === 'need' && $('#tot')) { $('#tot').textContent = inr(need$()); $('#fund').hidden = short$() <= 0; $('#shn').textContent = inr(short$()); $('#fa').value = fa$(); }
 });
 document.addEventListener('change', e => { const d = e.target.dataset; if (d.k === 'launch' || d.qf === 't') draw(); });
 document.addEventListener('click', async e => {
@@ -188,6 +190,7 @@ document.addEventListener('click', async e => {
     else if (d.act === 'others') { await sb.auth.signOut({ scope: 'others' }); toast('Logged out of other devices.'); }
     else if (d.act === 'del') { if (confirm('Request deletion of your account and data?')) { await rpc('request_deletion'); S.user.delReq = new Date().toISOString(); toast('Deletion requested.'); draw(); } }
     else if (d.act === 'rmpay') { if (confirm('Remove this payment method?')) { await rpc('delete_payout', { p_kind: d.id }); toast('Removed.'); draw(); } }
+    else if (d.act === 'addfunds') { await rpc('topup', { p_amount: +$('#fa').value }); toast('Money added (test).'); draw(); }
     else if (d.act === 'ctype') { S.cf.type = d.id; S.qs = sq(d.id); draw(); }
     else if (d.act === 'reset') { S.qs = sq(S.cf.type); draw(); }
     else if (d.act === 'aq') { S.qs.push({ q: '', h: '', t: 'long', r: 1, o: [] }); draw(); }

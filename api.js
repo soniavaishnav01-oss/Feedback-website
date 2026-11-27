@@ -4,6 +4,6 @@ const rpc = async (fn, args) => { const { data, error } = await sb.rpc(fn, args)
 const me = async () => {
   const { data: { session } } = await sb.auth.getSession(); if (!session) return null;
   const { data, error } = await sb.from('profiles').select('*').eq('id', session.user.id).single(); if (error) throw error;
-  return { id: data.id, name: data.name, email: session.user.email, role: data.role, profile: { age: data.age, loc: data.loc, prof: data.prof, int: data.interests } };
+  return { id: data.id, name: data.name, email: session.user.email, role: data.role, profile: { age: data.age, loc: data.loc, prof: data.prof, int: data.interests }, prefs: data.notif || {}, delReq: data.delete_requested, verified: !!session.user.email_confirmed_at };
 };
 const rows = async q => { const { data, error } = await q; if (error) throw new Error(error.message); return data; };
